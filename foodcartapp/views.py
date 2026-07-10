@@ -3,11 +3,12 @@ import json
 
 from django.http import JsonResponse
 from django.templatetags.static import static
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 
 from .models import Product
 from .models import Order
-from .models import OrderItem
 
 
 def banners_list_api(request):
@@ -61,9 +62,9 @@ def product_list_api(request):
         'indent': 4,
     })
 
-
+@api_view(['POST'])
 def register_order(request):
-    order_data = json.loads(request.body.decode())
+    order_data = request.data
 
     order = Order.objects.create(
         firstname=order_data['firstname'],
@@ -79,4 +80,7 @@ def register_order(request):
             quantity=item['quantity']
         )
 
-    return JsonResponse({})
+    return Response({
+        'status': 'success',
+        'order_id': order.id
+    })
