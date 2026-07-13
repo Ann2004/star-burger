@@ -62,8 +62,13 @@ def product_list_api(request):
         'indent': 4,
     })
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 def register_order(request):
+    if request.method == 'GET':
+        return Response({
+            'message': 'Send POST request with order data'
+        })
+    
     order_data = request.data
 
     order = Order.objects.create(
