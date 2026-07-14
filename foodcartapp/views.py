@@ -3,8 +3,10 @@ import json
 
 from django.http import JsonResponse
 from django.templatetags.static import static
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from phonenumber_field.validators import validate_international_phonenumber
 
 
 from .models import Product
@@ -70,16 +72,25 @@ def register_order(request):
         })
     
     order_data = request.data
+    
+    required_fields = ['products', 'firstname', 'lastname', 'phonenumber', 'address']
+    missed_fields = []
+    empty_fields = []
+    for field in required_fields:
+        if field not in order_data:
+            missed_fields.append(field)
+        elif order_data[field] in (None, ""):
+            empty_fields.append(field)
 
-    if 'products' not in order_data:
+    if missed_fields:
         return Response(
-            {'error': 'products: Обязательное поле.'},
+            {'error': f'{", ".join(missed_fields)}: Обязательное поле.'},
             status=400
         )
-
-    if order_data['products'] is None:
+    
+    if empty_fields:
         return Response(
-            {'error': 'products: Это поле не может быть пустым.'},
+            {'error': f'{", ".join(empty_fields)}: Это поле не может быть пустым.'},
             status=400
         )
 
@@ -94,6 +105,41 @@ def register_order(request):
             {'error': 'products: Ожидался list со значениями'},
             status=400
         )
+    
+    str_fields = ['firstname', 'lastname', 'phonenumber', 'address']
+    not_str_fields = []
+    for field in str_fields:
+        if not isinstance(order_data[field], str):
+            not_str_fields.append(field)
+
+    if not_str_fields:
+        return Response(
+            {'error': f'{", ".join(not_str_fields)}: Not a valid string.'},
+            status=400
+        )
+
+    try:
+        validate_international_phonenumber(order_data['phonenumber'])
+    except ValidationError:
+        return Response(
+            {'error': 'phonenumber: Введен некорректный номер телефона.'},
+            status=400
+        )
+    
+    order_products = []
+    for order_product in order_data['products']:
+        product_id = order_product['product']
+        try:
+            product = Product.objects.get(id=product_id)
+            order_products.append({
+            'product': product,
+            'quantity': order_product['quantity']
+        })
+        except Product.DoesNotExist:
+            return Response(
+            {'error': f'products: Недопустимый первичный ключ {product_id}'},
+            status=400
+        )
 
     order = Order.objects.create(
         firstname=order_data['firstname'],
@@ -102,10 +148,9 @@ def register_order(request):
         address=order_data['address']
     )
 
-    for item in order_data['products']:
-        product = Product.objects.get(id=item['product'])
+    for item in order_products:
         order.items.create(
-            product=product,
+            product=item['product'],
             quantity=item['quantity']
         )
 
