@@ -73,11 +73,11 @@ class OrderItemSerializer(ModelSerializer):
 
 
 class OrderSerializer(ModelSerializer):
-    products = OrderItemSerializer(many=True, allow_empty=False)
+    products = OrderItemSerializer(many=True, allow_empty=False, write_only=True)
 
     class Meta:
         model = Order
-        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
+        fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address', 'products']
 
 
 @csrf_exempt
@@ -102,7 +102,5 @@ def register_order(request):
             quantity=item_data['quantity']
         )
 
-    return Response({
-        'status': 'success',
-        'order_id': order.id
-    })
+    response_serializer = OrderSerializer(order)
+    return Response(response_serializer.data, status=201)
