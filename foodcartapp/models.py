@@ -134,7 +134,7 @@ class Order(models.Model):
         max_length=50,
         db_index=True
     )
-    phone_number = PhoneNumberField(
+    phonenumber = PhoneNumberField(
         'номер телефона',
         db_index=True
     )

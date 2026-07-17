@@ -25,7 +25,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = [
         'firstname',
         'lastname',
-        'phone_number',
+        'phonenumber',
         'address',
     ]
     search_fields = [
