@@ -140,12 +140,20 @@ class Order(models.Model):
     STATUS_PREPARING = "Preparing"
     STATUS_DELIVERING = "Delivering"
     STATUS_DONE = "Done"
+
+    OPTION_CASH = "In cash"
+    OPTION_ONLINE = "Online"
     
     STATUS_CHOICES = [
         (STATUS_PENDING, "Необработан"),
         (STATUS_PREPARING, "Собирается"),
         (STATUS_DELIVERING, "Курьер везет заказ"),
         (STATUS_DONE, "Выполнен"),
+    ]
+
+    PAYMENT_OPTIONS = [
+        (OPTION_CASH, "Наличными"),
+        (OPTION_ONLINE, "Электронно"),
     ]
 
     id = models.AutoField(
@@ -168,6 +176,12 @@ class Order(models.Model):
     address = models.CharField(
         'адрес доставки',
         max_length=50
+    )
+    payment_type = models.CharField(
+        choices=PAYMENT_OPTIONS,
+        default=OPTION_CASH,
+        max_length=20,
+        db_index=True,
     )
     status = models.CharField(
         'статус заказа',
