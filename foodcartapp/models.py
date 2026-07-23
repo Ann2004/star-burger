@@ -183,6 +183,15 @@ class Order(models.Model):
         max_length=20,
         db_index=True,
     )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        verbose_name='ресторан для приготовления',
+        related_name='orders',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     status = models.CharField(
         'статус заказа',
         choices=STATUS_CHOICES,
@@ -214,6 +223,29 @@ class Order(models.Model):
     )
 
     objects = OrderQuerySet.as_manager()
+
+    def get_available_restaurants(self):
+        order_products = self.items.select_related('product').all()
+        
+        if not order_products.exists():
+            return Restaurant.objects.none()
+        
+        restaurants_sets = []
+        for item in order_products:
+            available_restaurants = RestaurantMenuItem.objects.filter(
+                product=item.product,
+                availability=True
+            ).values_list('restaurant_id', flat=True)
+            restaurants_sets.append(set(available_restaurants))
+        
+        if not restaurants_sets:
+            return Restaurant.objects.none()
+        
+        common_restaurant_ids = restaurants_sets[0]
+        for restaurant_ids in restaurants_sets[1:]:
+            common_restaurant_ids &= restaurant_ids
+        
+        return Restaurant.objects.filter(id__in=common_restaurant_ids)
 
     class Meta:
         verbose_name = 'заказ'

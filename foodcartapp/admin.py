@@ -29,6 +29,8 @@ class OrderAdmin(admin.ModelAdmin):
         'lastname',
         'phonenumber',
         'address',
+        'status',
+        'restaurant',
     ]
     search_fields = [
         'lastname',

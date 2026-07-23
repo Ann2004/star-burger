@@ -1,5 +1,5 @@
 from django import forms
-from django.db.models import Prefetch
+from django.db.models import Prefetch, F
 from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
@@ -93,6 +93,16 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
+    orders = (Order.objects
+              .exclude(status=Order.STATUS_DONE)
+              .select_related('restaurant')
+              .prefetch_related(Prefetch('items', queryset=OrderItem.objects.select_related('product')))
+              .with_total_price()
+              .order_by(F('restaurant').asc(nulls_first=True), '-id'))
+    
+    for order in orders:
+        order.available_restaurants = order.get_available_restaurants()
+
     return render(request, template_name='order_items.html', context={
-        'orders': Order.objects.exclude(status=Order.STATUS_DONE).with_total_price().order_by('-id'),
+        'orders': orders,
     })
