@@ -136,6 +136,22 @@ class OrderQuerySet(models.QuerySet):
 
 
 class Order(models.Model):
+    STATUS_PENDING = "Pending"
+    STATUS_PREPARING = "Preparing"
+    STATUS_DELIVERING = "Delivering"
+    STATUS_DONE = "Done"
+    
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Необработан"),
+        (STATUS_PREPARING, "Собирается"),
+        (STATUS_DELIVERING, "Курьер везет заказ"),
+        (STATUS_DONE, "Выполнен"),
+    ]
+
+    id = models.AutoField(
+        primary_key=True,
+        db_index=True,
+    )
     firstname = models.CharField(
         'имя',
         max_length=50
@@ -152,6 +168,12 @@ class Order(models.Model):
     address = models.CharField(
         'адрес доставки',
         max_length=50
+    )
+    status = models.CharField(
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        max_length=20,
+        db_index=True,
     )
 
     objects = OrderQuerySet.as_manager()
