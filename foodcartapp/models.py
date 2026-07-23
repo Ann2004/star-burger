@@ -170,10 +170,18 @@ class Order(models.Model):
         max_length=50
     )
     status = models.CharField(
+        'статус заказа',
         choices=STATUS_CHOICES,
         default=STATUS_PENDING,
         max_length=20,
         db_index=True,
+    )
+    comment = models.TextField(
+        'комментарий',
+        blank=True,
+        null=True,
+        max_length=500,
+        default='',
     )
 
     objects = OrderQuerySet.as_manager()
