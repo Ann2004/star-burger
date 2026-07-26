@@ -4,12 +4,14 @@ from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
-
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+from geopy.distance import distance
 
 
 from foodcartapp.models import Product, Restaurant, Order, OrderItem
+from .utils import get_coordinates
+from django.conf import settings
 
 
 class Login(forms.Form):
@@ -99,9 +101,45 @@ def view_orders(request):
               .prefetch_related(Prefetch('items', queryset=OrderItem.objects.select_related('product')))
               .with_total_price()
               .order_by(F('restaurant').asc(nulls_first=True), '-id'))
+
+    restaurants = Restaurant.objects.all()
+    restaurant_coords = {}
+    for restaurant in restaurants:
+        restaurant_coords[restaurant.id] = get_coordinates(
+            settings.YANDEX_GEOCODER_API_KEY,
+            restaurant.address
+        )
     
     for order in orders:
         order.available_restaurants = order.get_available_restaurants()
+
+        order_coords = get_coordinates(
+            settings.YANDEX_GEOCODER_API_KEY,
+            order.address
+        )
+
+        if order_coords and order.available_restaurants.exists():
+            restaurants_with_distance = []
+
+            for restaurant in order.available_restaurants:
+                    restaurant_coord = restaurant_coords.get(restaurant.id)
+                    if restaurant_coord:
+                        dist = distance(order_coords, restaurant_coord).kilometers
+                        if dist is not None:
+                            restaurant.distance = round(dist, 1)
+                        else:
+                            restaurant.distance = None
+                    else:
+                        restaurant.distance = None
+                    
+                    restaurants_with_distance.append(restaurant)
+                
+            with_distance = [r for r in restaurants_with_distance if r.distance is not None]
+            with_distance_sorted = sorted(with_distance, key=lambda r: r.distance)
+
+            without_distance = [r for r in restaurants_with_distance if r.distance is None]
+
+            order.available_restaurants = with_distance_sorted + without_distance
 
     return render(request, template_name='order_items.html', context={
         'orders': orders,
