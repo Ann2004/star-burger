@@ -154,6 +154,7 @@ class Order(models.Model):
     PAYMENT_OPTIONS = [
         (OPTION_CASH, "Наличными"),
         (OPTION_ONLINE, "Электронно"),
+        ("", "Не выбрано"),
     ]
 
     id = models.AutoField(
@@ -179,7 +180,7 @@ class Order(models.Model):
     )
     payment_type = models.CharField(
         choices=PAYMENT_OPTIONS,
-        default=OPTION_CASH,
+        default="",
         max_length=20,
         db_index=True,
     )
