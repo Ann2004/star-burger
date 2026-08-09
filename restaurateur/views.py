@@ -7,11 +7,12 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 from geopy.distance import distance
+from django.conf import settings
 
 
 from foodcartapp.models import Product, Restaurant, Order, OrderItem
-from .utils import get_coordinates
-from django.conf import settings
+from geo.models import AddressCoordinates
+from geo.utils import fetch_coordinates_from_api
 
 
 class Login(forms.Form):
@@ -93,53 +94,141 @@ def view_restaurants(request):
     })
 
 
+def get_addresses_coordinates(addresses):
+    addresses = {address for address in addresses if address}
+
+    if not addresses:
+        return {}
+
+    existing_coordinates = list(
+        AddressCoordinates.objects.filter(
+            address__in=addresses
+        )
+    )
+
+    coordinates = {}
+    for coordinate in existing_coordinates:
+        if coordinate.latitude is not None and coordinate.longitude is not None:
+            coordinates[coordinate.address] = (
+                coordinate.latitude,
+                coordinate.longitude,
+            )
+
+    existing_addresses = {coordinate.address for coordinate in existing_coordinates}
+    missing_addresses = addresses - existing_addresses
+
+    new_coordinates = []
+
+    for address in missing_addresses:
+        coords = fetch_coordinates_from_api(
+            settings.YANDEX_GEOCODER_API_KEY,
+            address,
+        )
+
+        if coords:
+            longitude, latitude = coords
+
+            latitude = float(latitude)
+            longitude = float(longitude)
+
+            coordinates[address] = (latitude, longitude)
+
+            new_coordinates.append(
+                AddressCoordinates(
+                    address=address,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+            )
+        else:
+            new_coordinates.append(
+                AddressCoordinates(
+                    address=address,
+                    latitude=None,
+                    longitude=None,
+                )
+            )
+
+    if new_coordinates:
+        AddressCoordinates.objects.bulk_create(
+            new_coordinates
+        )
+
+    return coordinates
+
+
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = (Order.objects
-              .exclude(status=Order.STATUS_DONE)
-              .select_related('restaurant')
-              .prefetch_related(Prefetch('items', queryset=OrderItem.objects.select_related('product')))
-              .with_total_price()
-              .order_by(F('restaurant').asc(nulls_first=True), '-id'))
+    orders = (
+        Order.objects
+        .exclude(status=Order.STATUS_DONE)
+        .select_related('restaurant')
+        .prefetch_related(
+            Prefetch(
+                'items',
+                queryset=OrderItem.objects.select_related('product')
+            )
+        )
+        .with_total_price()
+        .order_by(
+            F('restaurant').asc(nulls_first=True),
+            '-id',
+        )
+        .with_available_restaurants()
+    )
 
-    restaurants = Restaurant.objects.all()
-    restaurant_coords = {}
+    restaurants = list(
+        Restaurant.objects.all()
+    )
+
+    addresses = {restaurant.address for restaurant in restaurants if restaurant.address}
+
+    addresses.update(order.address for order in orders if order.address)
+
+    coordinates = get_addresses_coordinates(addresses)
+
+    restaurant_coordinates = {}
     for restaurant in restaurants:
-        restaurant_coords[restaurant.id] = get_coordinates(
-            settings.YANDEX_GEOCODER_API_KEY,
-            restaurant.address
-        )
-    
+        address = restaurant.address
+        coordinates_value = coordinates.get(address)
+        restaurant_coordinates[restaurant.id] = coordinates_value
+
     for order in orders:
-        order.available_restaurants = order.get_available_restaurants()
+        order_coordinates = coordinates.get(order.address)
 
-        order_coords = get_coordinates(
-            settings.YANDEX_GEOCODER_API_KEY,
-            order.address
-        )
+        order.address_not_found = not order_coordinates
 
-        if order_coords and order.available_restaurants.exists():
-            restaurants_with_distance = []
-
+        if not order_coordinates:
             for restaurant in order.available_restaurants:
-                    restaurant_coord = restaurant_coords.get(restaurant.id)
-                    if restaurant_coord:
-                        dist = distance(order_coords, restaurant_coord).kilometers
-                        if dist is not None:
-                            restaurant.distance = round(dist, 1)
-                        else:
-                            restaurant.distance = None
-                    else:
-                        restaurant.distance = None
-                    
-                    restaurants_with_distance.append(restaurant)
-                
-            with_distance = [r for r in restaurants_with_distance if r.distance is not None]
-            with_distance_sorted = sorted(with_distance, key=lambda r: r.distance)
+                restaurant.distance = None
+            continue
 
-            without_distance = [r for r in restaurants_with_distance if r.distance is None]
+        for restaurant in order.available_restaurants:
+            restaurant_coordinates_value = (
+                restaurant_coordinates.get(
+                    restaurant.id
+                )
+            )
 
-            order.available_restaurants = with_distance_sorted + without_distance
+            if restaurant_coordinates_value:
+                restaurant.distance = round(
+                    distance(
+                        order_coordinates,
+                        restaurant_coordinates_value,
+                    ).kilometers,
+                    1,
+                )
+            else:
+                restaurant.distance = None
+
+        order.available_restaurants.sort(
+            key=lambda restaurant: (
+                restaurant.distance is None,
+                restaurant.distance
+                if restaurant.distance is not None
+                else 0,
+            )
+        )
 
     return render(request, template_name='order_items.html', context={
         'orders': orders,

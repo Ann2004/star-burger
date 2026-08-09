@@ -30,9 +30,6 @@ class AddressCoordinates(models.Model):
         ordering = ['-updated_at']
     
     def __str__(self):
-        return f"{self.address} - ({self.latitude}, {self.longitude})"
-    
-    def __str__(self):
         if self.latitude is not None and self.longitude is not None:
             return f"{self.address} - ({self.latitude}, {self.longitude})"
         return f"{self.address} - (не найдены)"

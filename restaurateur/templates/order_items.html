@@ -33,7 +33,13 @@
         <td>{{ order.total_price}} руб.</td>
         <td>{{ order.firstname }} {{ order.lastname }}</td>
         <td>{{ order.phonenumber }}</td>
-        <td>{{ order.address }}</td>
+        <td>
+          {% if order.address_not_found %}
+            Адрес не найден
+          {% else %}
+            {{ order.address }}
+          {% endif %}
+        </td>
         <td>{{ order.comment }}</td>
         <td>
           {% if order.restaurant %}

@@ -1,3 +1,6 @@
+from collections import defaultdict
+
+
 from django.db import models
 from django.db.models import Sum, F
 from django.core.validators import MinValueValidator
@@ -134,6 +137,30 @@ class OrderQuerySet(models.QuerySet):
             )
         )
 
+    def with_available_restaurants(self):
+        menu_items = (
+            RestaurantMenuItem.objects
+            .filter(availability=True)
+            .select_related('restaurant', 'product')
+        )
+
+        restaurant_products = defaultdict(set)
+
+        for menu_item in menu_items:
+            restaurant_products[menu_item.restaurant].add(menu_item.product)
+
+        for order in self:
+            order_products = {item.product for item in order.items.all()}
+
+            available_restaurants = []
+            for restaurant, products in restaurant_products.items():
+                if order_products.issubset(products):
+                    available_restaurants.append(restaurant)
+
+            order.available_restaurants = available_restaurants
+
+        return self
+
 
 class Order(models.Model):
     STATUS_PENDING = "Pending"
@@ -224,29 +251,6 @@ class Order(models.Model):
     )
 
     objects = OrderQuerySet.as_manager()
-
-    def get_available_restaurants(self):
-        order_products = self.items.select_related('product').all()
-        
-        if not order_products.exists():
-            return Restaurant.objects.none()
-        
-        restaurants_sets = []
-        for item in order_products:
-            available_restaurants = RestaurantMenuItem.objects.filter(
-                product=item.product,
-                availability=True
-            ).values_list('restaurant_id', flat=True)
-            restaurants_sets.append(set(available_restaurants))
-        
-        if not restaurants_sets:
-            return Restaurant.objects.none()
-        
-        common_restaurant_ids = restaurants_sets[0]
-        for restaurant_ids in restaurants_sets[1:]:
-            common_restaurant_ids &= restaurant_ids
-        
-        return Restaurant.objects.filter(id__in=common_restaurant_ids)
 
     class Meta:
         verbose_name = 'заказ'

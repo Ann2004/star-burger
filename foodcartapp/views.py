@@ -4,7 +4,6 @@ import json
 from django.db import transaction
 from django.http import JsonResponse
 from django.templatetags.static import static
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
@@ -81,15 +80,9 @@ class OrderSerializer(ModelSerializer):
         fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address', 'products']
 
 
-@csrf_exempt
-@api_view(['GET', 'POST'])
+@api_view(['POST'])
 @transaction.atomic
 def register_order(request):
-    if request.method == 'GET':
-        return Response({
-            'message': 'Send POST request with order data'
-        })
-    
     serializer = OrderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
