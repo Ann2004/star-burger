@@ -198,10 +198,7 @@ def view_orders(request):
 
         order.address_not_found = not order_coordinates
 
-        if not order_coordinates:
-            for restaurant in order.available_restaurants:
-                restaurant.distance = None
-            continue
+        restaurants_with_distance = []
 
         for restaurant in order.available_restaurants:
             restaurant_coordinates_value = (
@@ -210,8 +207,8 @@ def view_orders(request):
                 )
             )
 
-            if restaurant_coordinates_value:
-                restaurant.distance = round(
+            if order_coordinates and restaurant_coordinates_value:
+                restaurant_distance = round(
                     distance(
                         order_coordinates,
                         restaurant_coordinates_value,
@@ -219,16 +216,23 @@ def view_orders(request):
                     1,
                 )
             else:
-                restaurant.distance = None
+                restaurant_distance = None
 
-        order.available_restaurants.sort(
-            key=lambda restaurant: (
-                restaurant.distance is None,
-                restaurant.distance
-                if restaurant.distance is not None
+            restaurants_with_distance.append({
+                'restaurant': restaurant,
+                'distance': restaurant_distance,
+            })
+
+        restaurants_with_distance.sort(
+            key=lambda item: (
+                item['distance'] is None,
+                item['distance']
+                if item['distance'] is not None
                 else 0,
             )
         )
+
+        order.available_restaurants_with_distance = restaurants_with_distance
 
     return render(request, template_name='order_items.html', context={
         'orders': orders,

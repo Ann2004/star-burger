@@ -47,16 +47,17 @@
               Готовит: {{ order.restaurant.name }}
             </span>
           {% else %}
-            {% with available=order.available_restaurants %}
+            {% with available=order.available_restaurants_with_distance %}
               {% if available %}
                 <details>
                   <summary>Может быть приготовлен ресторанами:</summary>
                   <ul>
-                    {% for restaurant in available %}
+                    {% for item in available %}
                       <li>
-                        {{ restaurant.name }}
-                        {% if restaurant.distance is not None %}
-                          ({{ restaurant.distance }} км)
+                        {{ item.restaurant.name }}
+
+                        {% if item.distance is not None %}
+                          ({{ item.distance }} км)
                         {% else %}
                           (расстояние неизвестно)
                         {% endif %}
