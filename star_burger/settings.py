@@ -13,7 +13,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
 SECRET_KEY = env('SECRET_KEY')
-DEBUG = env.bool('DEBUG', True)
+DEBUG = env.bool('DEBUG', False)
 
 YANDEX_GEOCODER_API_KEY = env('YANDEX_GEOCODER_API_KEY')
 
@@ -43,7 +43,29 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 ]
+
+ROLLBAR = {
+    'access_token': os.getenv('ROLLBAR_ACCESS_TOKEN'),
+    'environment': os.getenv('ROLLBAR_ENVIRONMENT', 'development'),
+    'code_version': os.getenv('GIT_SHA', '1.0.0'),
+    'root': BASE_DIR,
+    'locals': {
+        'enabled': DEBUG,
+    },
+    'scrub_fields': [
+        'password',
+        'secret',
+        'token',
+        'api_key',
+        'access_token',
+        'authorization',
+        'cookie',
+        'csrf_token',
+        'sessionid',
+    ],
+}
 
 ROOT_URLCONF = 'star_burger.urls'
 

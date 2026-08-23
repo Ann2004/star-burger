@@ -58,8 +58,11 @@ pip install -r requirements.txt
 ```sh
 SECRET_KEY=django-insecure-0if40nf4nf93n4
 YANDEX_GEOCODER_API_KEY=geocoder-api-key
+ROLLBAR_ACCESS_TOKEN='ваш_токен'
 ```
 Получить ключ API Геокодера можно в [кабинете разработчика Яндекс](https://yandex.ru/maps-api/console).
+
+Получить токен Rollbar для логирования можно на [rollbar.com](https://rollbar.com).
 
 Создайте файл базы данных SQLite и отмигрируйте её следующей командой:
 
