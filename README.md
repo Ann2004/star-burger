@@ -59,10 +59,11 @@ pip install -r requirements.txt
 SECRET_KEY=django-insecure-0if40nf4nf93n4
 YANDEX_GEOCODER_API_KEY=geocoder-api-key
 ROLLBAR_ACCESS_TOKEN='ваш_токен'
+DB_URL=postgres://ПОЛЬЗОВАТЕЛЬ:ПАРОЛЬ@ХОСТ:ПОРТ/ИМЯ_БАЗЫ
 ```
-Получить ключ API Геокодера можно в [кабинете разработчика Яндекс](https://yandex.ru/maps-api/console).
-
-Получить токен Rollbar для логирования можно на [rollbar.com](https://rollbar.com).
+- Получить ключ API Геокодера можно в [кабинете разработчика Яндекс](https://yandex.ru/maps-api/console).
+- Получить токен Rollbar для логирования можно на [rollbar.com](https://rollbar.com).
+- DB_URL - URL для подключения к базе данных PostgreSQL
 
 Создайте файл базы данных SQLite и отмигрируйте её следующей командой:
 
