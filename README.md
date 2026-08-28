@@ -160,4 +160,4 @@ Parcel будет следить за файлами в каталоге `bundle
 
 Где используется репозиторий:
 
-- Второй и третий урок [учебного курса Django](https://dvmn.org/modules/django/)
+- Второй и третий урок [курса Django](https://dvmn.org/modules/django/)
