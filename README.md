@@ -154,6 +154,64 @@ Parcel будет следить за файлами в каталоге `bundle
 - `SECRET_KEY` — секретный ключ проекта. Он отвечает за шифрование на сайте. Например, им зашифрованы все пароли на вашем сайте.
 - `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/5.2/ref/settings/#allowed-hosts)
 
+## Автоматизация деплоя
+
+Для быстрого обновления кода создайте исполняемый деплойный bash скрипт `deploy_star_burger.sh` со следующим содержимым:
+
+```
+#!/bin/bash
+
+set -e
+
+cd /opt/star-burger
+
+echo "Обновление кода из репозитория..."
+git pull
+
+echo "Установка Python-зависимостей..."
+source venv/bin/activate
+pip install --no-input -r requirements.txt
+
+echo "Установка Node.js-зависимостей..."
+npm ci --dev --no-progress
+
+echo "Сборка JS-кода..."
+./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
+
+echo "борка статики Django..."
+python manage.py collectstatic --noinput
+
+echo "Применение миграций базы данных..."
+python manage.py migrate --noinput
+
+echo "Перезапуск Gunicorn..."
+systemctl restart star-burger
+
+echo "Деплой успешно завершён!"
+```
+
+Данный скрипт:
+-  Обновляет код репозитория
+-  Устанавливает библиотеки
+    -  для Python
+    -  для Node.js
+-  Пересобирает JS-код
+-  Пересобирает статику Django
+-  Накатывает миграции
+-  Перезапускает сервисы Gunicorn
+
+Сделайте файл исполняемым:
+
+```
+chmod +x deploy_star_burger.sh
+```
+
+Запустите скрипт:
+
+```
+./deploy_star_burger.sh
+```
+
 ## Цели проекта
 
 Код написан в учебных целях — это урок в курсе по Python и веб-разработке на сайте [Devman](https://dvmn.org). За основу был взят код проекта [FoodCart](https://github.com/Saibharath79/FoodCart).
