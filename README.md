@@ -165,8 +165,13 @@ set -e
 
 cd /opt/star-burger
 
+source .env
+
 echo "Обновление кода из репозитория..."
 git pull
+
+COMMIT_HASH_SHORT=$(git rev-parse --short HEAD)
+echo "Текущий коммит: $COMMIT_HASH_SHORT"
 
 echo "Установка Python-зависимостей..."
 source venv/bin/activate
@@ -188,6 +193,23 @@ echo "Перезапуск Gunicorn..."
 systemctl restart star-burger
 
 echo "Деплой успешно завершён!"
+
+echo "Отправка отчёта о деплое в Rollbar..."
+
+LOCAL_USERNAME=$(whoami)
+
+curl -s -H "X-Rollbar-Access-Token: $ROLLBAR_ACCESS_TOKEN" \
+     -H "Content-Type: application/json" \
+     -X POST 'https://api.rollbar.com/api/1/deploy' \
+     -d "{
+         \"environment\": \"$ROLLBAR_ENVIRONMENT\",
+         \"revision\": \"$COMMIT_HASH_SHORT\",
+         \"local_username\": \"$LOCAL_USERNAME\",
+         \"comment\": \"Deployment from deploy script\",
+         \"status\": \"succeeded\"
+     }"
+
+echo "Отчёт отправлен в Rollbar"
 ```
 
 Данный скрипт:
@@ -199,6 +221,7 @@ echo "Деплой успешно завершён!"
 -  Пересобирает статику Django
 -  Накатывает миграции
 -  Перезапускает сервисы Gunicorn
+-  Отправляет отчет о деплое в Rollbar
 
 Сделайте файл исполняемым:
 
